@@ -1,0 +1,74 @@
+package content
+
+import (
+	"testing"
+)
+
+func TestBuildTreeReturnsRoot(t *testing.T) {
+	root := BuildTree()
+	if root.Name != "~tewodros" {
+		t.Errorf("expected root ~tewodros, got %s", root.Name)
+	}
+	if !root.IsDir {
+		t.Error("root should be a directory")
+	}
+}
+
+func TestBuildTreeHasRequiredEntries(t *testing.T) {
+	root := BuildTree()
+	required := []string{"about.txt", "skills", "projects", "contact.txt", "resume.txt"}
+	names := make(map[string]bool)
+	for _, child := range root.Children {
+		names[child.Name] = true
+	}
+	for _, name := range required {
+		if !names[name] {
+			t.Errorf("missing required entry: %s", name)
+		}
+	}
+}
+
+func TestAboutHasContent(t *testing.T) {
+	root := BuildTree()
+	for _, child := range root.Children {
+		if child.Name == "about.txt" {
+			if child.Content == "" {
+				t.Error("about.txt should have content")
+			}
+			return
+		}
+	}
+	t.Error("about.txt not found")
+}
+
+func TestSkillsHasSubfiles(t *testing.T) {
+	root := BuildTree()
+	for _, child := range root.Children {
+		if child.Name == "skills" {
+			if !child.IsDir {
+				t.Error("skills should be a directory")
+			}
+			if len(child.Children) == 0 {
+				t.Error("skills should have children")
+			}
+			return
+		}
+	}
+	t.Error("skills not found")
+}
+
+func TestProjectsHasEntries(t *testing.T) {
+	root := BuildTree()
+	for _, child := range root.Children {
+		if child.Name == "projects" {
+			if !child.IsDir {
+				t.Error("projects should be a directory")
+			}
+			if len(child.Children) == 0 {
+				t.Error("projects should have children")
+			}
+			return
+		}
+	}
+	t.Error("projects not found")
+}
