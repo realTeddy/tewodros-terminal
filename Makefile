@@ -1,4 +1,4 @@
-.PHONY: build run test clean deploy
+.PHONY: build run test clean deploy deploy-setup
 
 BINARY=tewodros-terminal
 GOFLAGS=-ldflags="-s -w"
@@ -21,3 +21,7 @@ clean:
 deploy: build-arm
 	scp $(BINARY)-linux-arm64 deploy@your-vm:/opt/tewodros-terminal/tewodros-terminal
 	ssh deploy@your-vm 'sudo systemctl restart tewodros-terminal'
+
+deploy-setup:
+	scp deploy/tewodros-terminal.service deploy@your-vm:/tmp/
+	ssh deploy@your-vm 'sudo mv /tmp/tewodros-terminal.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable tewodros-terminal'
