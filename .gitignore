@@ -1,0 +1,20 @@
+# Binary
+tewodros-terminal
+*.exe
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# SSH keys
+.ssh/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
