@@ -9,10 +9,7 @@ func BuildTree() *tui.FSNode {
 		IsDir: true,
 		Children: []*tui.FSNode{
 			aboutFile(),
-			skillsDir(),
 			projectsDir(),
-			contactFile(),
-			resumeFile(),
 			guestbookDir(),
 		},
 	}
@@ -39,35 +36,6 @@ I like to listen to music and watch movies. It's my way of unwinding
 and finding inspiration outside the world of code.
 
 linkedin.com/in/tewodrosassefa`,
-	}
-}
-
-func skillsDir() *tui.FSNode {
-	return &tui.FSNode{
-		Name:  "skills",
-		IsDir: true,
-		Children: []*tui.FSNode{
-			{
-				Name: "languages.txt",
-				Content: `Languages
----------
-Go, TypeScript, JavaScript, Python, SQL, HTML/CSS`,
-			},
-			{
-				Name: "tools.txt",
-				Content: `Tools
------
-Docker, Git, Linux, AWS, Cloudflare, PostgreSQL,
-SQLite, Nginx, systemd, GitHub Actions`,
-			},
-			{
-				Name: "frameworks.txt",
-				Content: `Frameworks & Libraries
-----------------------
-React, Node.js, Bubble Tea, Wish, Express,
-Next.js, Tailwind CSS`,
-			},
-		},
 	}
 }
 
@@ -111,27 +79,3 @@ Read messages:      Type 'guestbook --read'`,
 	}
 }
 
-func contactFile() *tui.FSNode {
-	return &tui.FSNode{
-		Name: "contact.txt",
-		Content: `Contact
--------
-Email:    assefa@tewodros.me
-LinkedIn: linkedin.com/in/tewodros
-GitHub:   github.com/tewodros
-
-Feel free to reach out!`,
-	}
-}
-
-func resumeFile() *tui.FSNode {
-	return &tui.FSNode{
-		Name: "resume.txt",
-		Content: `Resume
-------
-For my full resume, visit:
-https://tewodros.me/resume.pdf
-
-Or email me at assefa@tewodros.me`,
-	}
-}
