@@ -33,7 +33,7 @@ func NewApp(root *FSNode, gb Guestbook) *App {
 		height:    24,
 		guestbook: gb,
 	}
-	app.output = append(app.output, renderWelcome()+"\n")
+	app.output = append(app.output, renderWelcome())
 	return app
 }
 

@@ -13,10 +13,8 @@ var (
 	errorStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	dirStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
 	fileStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
-	welcomeStyle    = lipgloss.NewStyle().
-			Border(lipgloss.DoubleBorder()).
-			BorderForeground(lipgloss.Color("14")).
-			Padding(1, 3)
+	titleStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
+	subtitleStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
 func renderPrompt(cwd string) string {
@@ -29,8 +27,8 @@ func renderPrompt(cwd string) string {
 }
 
 func renderWelcome() string {
-	return welcomeStyle.Render(
-		"tewodros.me — terminal portfolio\n\n" +
-			"Welcome. Type 'help' to begin.",
-	)
+	return "\r\n" +
+		titleStyle.Render("  tewodros.me") + subtitleStyle.Render(" - terminal portfolio") + "\r\n" +
+		"\r\n" +
+		"  Welcome. Type 'help' to begin.\r\n"
 }
