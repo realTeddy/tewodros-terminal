@@ -21,17 +21,24 @@ func BuildTree() *tui.FSNode {
 func aboutFile() *tui.FSNode {
 	return &tui.FSNode{
 		Name: "about.txt",
-		Content: `Hi, I'm Tewodros Assefa.
-
+		Content: `Tewodros Assefa
+----------------
 Full-stack developer based in Charlotte, NC.
-I build high-performance web applications and
-robust software architectures.
 
-When I'm not coding, you can find me exploring
-new technologies and contributing to open source.
+I love diving into the nitty-gritty of software development and
+bringing ideas to life through code. My journey in tech has been
+all about crafting high-performance web applications, designing
+robust software architectures, and creating seamless user experiences.
 
-This portfolio is a real terminal — you connected
-over SSH or WebSocket. Built with Go + Charm.`,
+Whether it's developing dynamic interfaces, integrating complex
+systems, or ensuring top-notch security, I thrive on tackling new
+challenges and learning along the way.
+
+When I'm not coding and nerding out over the latest tech trends,
+I like to listen to music and watch movies. It's my way of unwinding
+and finding inspiration outside the world of code.
+
+linkedin.com/in/tewodrosassefa`,
 	}
 }
 
