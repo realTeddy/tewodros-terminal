@@ -37,7 +37,7 @@ func NewCommands(fs *FileSystem, gb Guestbook, email EmailSender) *Commands {
 		fs:        fs,
 		guestbook: gb,
 		email:     email,
-		names:     []string{"about", "contact", "ls", "cd", "cat", "tree", "help", "clear", "whoami", "neofetch", "guestbook", "exit", "quit"},
+		names:     []string{"about", "contact", "github", "ls", "cd", "cat", "tree", "help", "clear", "whoami", "neofetch", "guestbook", "exit", "quit"},
 	}
 }
 
@@ -58,6 +58,8 @@ func (c *Commands) Execute(name string, args []string) string {
 		return c.execAbout()
 	case "contact":
 		return "__CONTACT_INTERACTIVE__"
+	case "github":
+		return "https://github.com/realTeddy/tewodros-terminal"
 	case "ls":
 		return c.execLs()
 	case "cd":
@@ -130,6 +132,7 @@ func (c *Commands) execHelp() string {
 
   about            About me
   contact          Send me a message
+  github           View source code
   ls               List directory contents
   cd <dir>         Change directory (cd .., cd ~)
   cat <file>       Display file contents
