@@ -12,7 +12,7 @@ Restart=always
 RestartSec=5
 
 Environment=SSH_HOST=0.0.0.0
-Environment=SSH_PORT=2222
+Environment=SSH_PORT=22
 Environment=HTTP_HOST=0.0.0.0
 Environment=HTTP_PORT=8080
 Environment=HOST_KEY_DIR=/opt/tewodros-terminal/.ssh

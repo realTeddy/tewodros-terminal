@@ -43,13 +43,13 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p 2222 "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          scp -i ~/.ssh/deploy_key \
+          scp -P 2222 -i ~/.ssh/deploy_key \
             tewodros-terminal \
             "${SERVER_USER}@${SERVER_HOST}:/opt/tewodros-terminal/tewodros-terminal-new"
 
-          ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
+          ssh -p 2222 -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
             cd /opt/tewodros-terminal
             mv tewodros-terminal-new tewodros-terminal
             chmod +x tewodros-terminal
