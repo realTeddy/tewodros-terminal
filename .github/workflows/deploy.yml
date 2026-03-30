@@ -31,8 +31,8 @@ jobs:
         with:
           go-version: "1.22"
 
-      - name: Build for ARM64
-        run: GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o tewodros-terminal ./cmd/server
+      - name: Build for Linux amd64
+        run: GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o tewodros-terminal ./cmd/server
 
       - name: Deploy to server
         env:
@@ -43,13 +43,13 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p 2222 "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          scp -P 2222 -i ~/.ssh/deploy_key \
+          scp -i ~/.ssh/deploy_key \
             tewodros-terminal \
             "${SERVER_USER}@${SERVER_HOST}:/opt/tewodros-terminal/tewodros-terminal-new"
 
-          ssh -p 2222 -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
+          ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
             cd /opt/tewodros-terminal
             mv tewodros-terminal-new tewodros-terminal
             chmod +x tewodros-terminal
