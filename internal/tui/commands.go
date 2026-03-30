@@ -30,7 +30,7 @@ func NewCommands(fs *FileSystem, gb Guestbook) *Commands {
 	return &Commands{
 		fs:        fs,
 		guestbook: gb,
-		names:     []string{"ls", "cd", "cat", "tree", "help", "clear", "whoami", "neofetch", "guestbook", "exit", "quit"},
+		names:     []string{"about", "ls", "cd", "cat", "tree", "help", "clear", "whoami", "neofetch", "guestbook", "exit", "quit"},
 	}
 }
 
@@ -47,6 +47,8 @@ func ParseCommand(input string) (string, []string) {
 // Execute runs a command and returns the output string.
 func (c *Commands) Execute(name string, args []string) string {
 	switch name {
+	case "about":
+		return c.execAbout()
 	case "ls":
 		return c.execLs()
 	case "cd":
@@ -117,17 +119,40 @@ func (c *Commands) execTree() string {
 func (c *Commands) execHelp() string {
 	return `Available commands:
 
-  ls              List directory contents
-  cd <dir>        Change directory (cd .., cd ~)
-  cat <file>      Display file contents
-  tree            Show full directory tree
-  help            Show this help message
-  clear           Clear the screen
-  whoami          Who are you?
-  neofetch        System info
-  guestbook       Leave a message
+  about            About me
+  ls               List directory contents
+  cd <dir>         Change directory (cd .., cd ~)
+  cat <file>       Display file contents
+  tree             Show full directory tree
+  help             Show this help message
+  clear            Clear the screen
+  whoami           Who are you?
+  neofetch         System info
+  guestbook        Leave a message
   guestbook --read View recent messages
-  exit / quit     Close the session`
+  exit / quit      Close the session`
+}
+
+func (c *Commands) execAbout() string {
+	return `
+  Tewodros Assefa
+  ----------------
+  Full-stack developer based in Charlotte, NC.
+
+  I love diving into the nitty-gritty of software development and
+  bringing ideas to life through code. My journey in tech has been
+  all about crafting high-performance web applications, designing
+  robust software architectures, and creating seamless user experiences.
+
+  Whether it's developing dynamic interfaces, integrating complex
+  systems, or ensuring top-notch security, I thrive on tackling new
+  challenges and learning along the way.
+
+  When I'm not coding and nerding out over the latest tech trends,
+  I like to listen to music and watch movies. It's my way of unwinding
+  and finding inspiration outside the world of code.
+
+  linkedin.com/in/tewodrosassefa`
 }
 
 func (c *Commands) execWhoami() string {
