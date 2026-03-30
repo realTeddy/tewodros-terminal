@@ -19,6 +19,8 @@ func main() {
 	sshPort := envOr("SSH_PORT", "22")
 	httpHost := envOr("HTTP_HOST", "0.0.0.0")
 	httpPort := envOr("HTTP_PORT", "8080")
+	tlsCert := os.Getenv("TLS_CERT")
+	tlsKey := os.Getenv("TLS_KEY")
 	hostKeyDir := envOr("HOST_KEY_DIR", ".ssh")
 	dbPath := envOr("DB_PATH", "guestbook.db")
 	resendKey := os.Getenv("RESEND_API_KEY")
@@ -62,20 +64,33 @@ func main() {
 	httpSrv := webserver.NewServer(webserver.Config{
 		Host:      httpHost,
 		Port:      httpPort,
+		TLSCert:   tlsCert,
+		TLSKey:    tlsKey,
 		Guestbook: guestbook,
 		Email:     emailSender,
 	})
 
 	go func() {
-		log.Printf("HTTP server listening on %s:%s", httpHost, httpPort)
-		if err := httpSrv.ListenAndServe(); err != nil {
-			log.Printf("http server error: %v", err)
+		if tlsCert != "" && tlsKey != "" {
+			log.Printf("HTTPS server listening on %s:%s", httpHost, httpPort)
+			if err := httpSrv.ListenAndServeTLS(tlsCert, tlsKey); err != nil {
+				log.Printf("https server error: %v", err)
+			}
+		} else {
+			log.Printf("HTTP server listening on %s:%s", httpHost, httpPort)
+			if err := httpSrv.ListenAndServe(); err != nil {
+				log.Printf("http server error: %v", err)
+			}
 		}
 	}()
 
+	proto := "http"
+	if tlsCert != "" {
+		proto = "https"
+	}
 	fmt.Println("tewodros-terminal is running")
 	fmt.Printf("  SSH:  ssh -p %s %s\n", sshPort, sshHost)
-	fmt.Printf("  HTTP: http://%s:%s\n", httpHost, httpPort)
+	fmt.Printf("  HTTP: %s://%s:%s\n", proto, httpHost, httpPort)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

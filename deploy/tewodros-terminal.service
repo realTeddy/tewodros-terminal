@@ -14,7 +14,9 @@ RestartSec=5
 Environment=SSH_HOST=0.0.0.0
 Environment=SSH_PORT=22
 Environment=HTTP_HOST=0.0.0.0
-Environment=HTTP_PORT=8080
+Environment=HTTP_PORT=443
+Environment=TLS_CERT=/opt/tewodros-terminal/origin.crt
+Environment=TLS_KEY=/opt/tewodros-terminal/origin.key
 Environment=HOST_KEY_DIR=/opt/tewodros-terminal/.ssh
 Environment=DB_PATH=/opt/tewodros-terminal/guestbook.db
 

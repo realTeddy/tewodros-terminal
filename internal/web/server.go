@@ -17,6 +17,8 @@ var staticFS embed.FS
 type Config struct {
 	Host      string
 	Port      string
+	TLSCert   string // path to TLS certificate (empty = no TLS)
+	TLSKey    string // path to TLS private key
 	Guestbook *gb.SQLiteGuestbook
 	Email     *email.Sender
 }
