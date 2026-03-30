@@ -9,7 +9,6 @@ func BuildTree() *tui.FSNode {
 		IsDir: true,
 		Children: []*tui.FSNode{
 			aboutFile(),
-			projectsDir(),
 			guestbookDir(),
 		},
 	}
@@ -36,30 +35,6 @@ I like to listen to music and watch movies. It's my way of unwinding
 and finding inspiration outside the world of code.
 
 linkedin.com/in/tewodrosassefa`,
-	}
-}
-
-func projectsDir() *tui.FSNode {
-	return &tui.FSNode{
-		Name:  "projects",
-		IsDir: true,
-		Children: []*tui.FSNode{
-			{
-				Name:  "terminal-portfolio",
-				IsDir: true,
-				Children: []*tui.FSNode{
-					{
-						Name: "README.txt",
-						Content: `Terminal Portfolio
-------------------
-This very site! A real terminal experience served
-over SSH and HTTPS using Go, Bubble Tea, and Wish.
-
-Source: github.com/tewodros/terminal-portfolio`,
-					},
-				},
-			},
-		},
 	}
 }
 

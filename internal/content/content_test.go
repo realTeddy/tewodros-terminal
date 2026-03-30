@@ -16,7 +16,7 @@ func TestBuildTreeReturnsRoot(t *testing.T) {
 
 func TestBuildTreeHasRequiredEntries(t *testing.T) {
 	root := BuildTree()
-	required := []string{"about.txt", "projects", "guestbook"}
+	required := []string{"about.txt", "guestbook"}
 	names := make(map[string]bool)
 	for _, child := range root.Children {
 		names[child.Name] = true
@@ -41,18 +41,3 @@ func TestAboutHasContent(t *testing.T) {
 	t.Error("about.txt not found")
 }
 
-func TestProjectsHasEntries(t *testing.T) {
-	root := BuildTree()
-	for _, child := range root.Children {
-		if child.Name == "projects" {
-			if !child.IsDir {
-				t.Error("projects should be a directory")
-			}
-			if len(child.Children) == 0 {
-				t.Error("projects should have children")
-			}
-			return
-		}
-	}
-	t.Error("projects not found")
-}
