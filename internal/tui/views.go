@@ -30,5 +30,7 @@ func renderWelcome() string {
 	return "\r\n" +
 		titleStyle.Render("  tewodros.me") + subtitleStyle.Render(" - terminal portfolio") + "\r\n" +
 		"\r\n" +
-		"  Welcome. Type 'help' to begin.\r\n"
+		"  Try " + promptUserStyle.Render("about") + ", " +
+		promptUserStyle.Render("contact") + ", or " +
+		promptUserStyle.Render("help") + " to see all commands.\r\n"
 }
