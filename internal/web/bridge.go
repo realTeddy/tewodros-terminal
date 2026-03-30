@@ -113,7 +113,7 @@ func (s *webSession) send(data string) {
 }
 
 func (s *webSession) sendWelcome() {
-	s.send("\x1b[1;36m  tewodros.me\x1b[0m\x1b[90m - terminal portfolio\x1b[0m\r\n")
+	s.send("\x1b[1;36m  tewodros.me\x1b[0m\x1b[90m — not a fake terminal. \x1b[36mssh tewodros.me\x1b[90m if you don't believe me.\x1b[0m\r\n")
 	s.send("\r\n")
 	s.send("  Try \x1b[32mabout\x1b[0m, \x1b[32mcontact\x1b[0m, or \x1b[32mhelp\x1b[0m to see all commands.\r\n")
 	s.send("\r\n")

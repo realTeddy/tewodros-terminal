@@ -28,7 +28,8 @@ func renderPrompt(cwd string) string {
 
 func renderWelcome() string {
 	return "\r\n" +
-		titleStyle.Render("  tewodros.me") + subtitleStyle.Render(" - terminal portfolio") + "\r\n" +
+		titleStyle.Render("  tewodros.me") + subtitleStyle.Render(" — not a fake terminal. ") +
+		promptHostStyle.Render("ssh tewodros.me") + subtitleStyle.Render(" if you don't believe me.") + "\r\n" +
 		"\r\n" +
 		"  Try " + promptUserStyle.Render("about") + ", " +
 		promptUserStyle.Render("contact") + ", or " +
