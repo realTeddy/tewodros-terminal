@@ -6,10 +6,10 @@
 # When ARM succeeds, you can terminate the x86 micro and switch to the ARM instance.
 # Update SUBNET_ID if you created a new subnet, or reuse the existing one.
 
-TENANCY="ocid1.tenancy.oc1..aaaaaaaah4fr4536wp5ffjk3otqi5b7phqgtj6sxy2wjgips4byhm3sjdbtq"
-SUBNET_ID="ocid1.subnet.oc1.iad.aaaaaaaaeqy5amzabr5klquvke4gvyl6ujdkipofo2dk6lqqmtsorchjsfoa"
-IMAGE_ID="ocid1.image.oc1.iad.aaaaaaaaccnswiekwi4w3pkmygjvfk24epduwj7uvq2smjmznu4kq6dcs27a"
-SSH_KEY_FILE="d:/repos/tewodros-terminal/.ssh/oracle_vm.pub"
+TENANCY="${OCI_TENANCY:?Set OCI_TENANCY to your tenancy OCID}"
+SUBNET_ID="${OCI_SUBNET:?Set OCI_SUBNET to your subnet OCID}"
+IMAGE_ID="${OCI_IMAGE:?Set OCI_IMAGE to your ARM image OCID}"
+SSH_KEY_FILE="${OCI_SSH_KEY:-.ssh/oracle_vm.pub}"
 ADS=("mqKE:US-ASHBURN-AD-1" "mqKE:US-ASHBURN-AD-2" "mqKE:US-ASHBURN-AD-3")
 
 INTERVAL=300  # seconds between retry rounds (5 minutes)

@@ -16,6 +16,15 @@ tewodros-terminal-**
 .vscode/
 .idea/
 
+# TLS certificates
+*.crt
+*.key
+*.pem
+
+# Environment
+.env
+.env.*
+
 # OS
 .DS_Store
 Thumbs.db
