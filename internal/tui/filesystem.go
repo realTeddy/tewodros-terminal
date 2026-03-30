@@ -42,7 +42,7 @@ func (fs *FileSystem) Ls() []*FSNode {
 	return fs.cwd.Children
 }
 
-// Cd changes directory. Supports "..", "~", and child directory names.
+// Cd changes directory. Supports "..", "~", child names, and paths like "./guestbook".
 func (fs *FileSystem) Cd(name string) error {
 	switch name {
 	case "..":
@@ -56,31 +56,94 @@ func (fs *FileSystem) Cd(name string) error {
 		fs.stack = nil
 		return nil
 	default:
-		for _, child := range fs.cwd.Children {
-			if child.Name == name {
-				if !child.IsDir {
-					return fmt.Errorf("not a directory: %s", name)
+		// Save state in case path resolution fails
+		oldCwd := fs.cwd
+		oldStack := make([]*FSNode, len(fs.stack))
+		copy(oldStack, fs.stack)
+
+		cleaned := strings.TrimPrefix(name, "./")
+		parts := strings.Split(cleaned, "/")
+		for _, part := range parts {
+			if part == "" || part == "." {
+				continue
+			}
+			if part == ".." {
+				if len(fs.stack) > 0 {
+					fs.cwd = fs.stack[len(fs.stack)-1]
+					fs.stack = fs.stack[:len(fs.stack)-1]
 				}
-				fs.stack = append(fs.stack, fs.cwd)
-				fs.cwd = child
-				return nil
+				continue
+			}
+			found := false
+			for _, child := range fs.cwd.Children {
+				if child.Name == part {
+					if !child.IsDir {
+						fs.cwd = oldCwd
+						fs.stack = oldStack
+						return fmt.Errorf("not a directory: %s", name)
+					}
+					fs.stack = append(fs.stack, fs.cwd)
+					fs.cwd = child
+					found = true
+					break
+				}
+			}
+			if !found {
+				fs.cwd = oldCwd
+				fs.stack = oldStack
+				return fmt.Errorf("no such directory: %s", name)
 			}
 		}
-		return fmt.Errorf("no such directory: %s", name)
+		return nil
 	}
 }
 
-// Cat returns the content of a file in the current directory.
+// Cat returns the content of a file, supporting paths like "guestbook/README.txt" and "./guestbook/README.txt".
 func (fs *FileSystem) Cat(name string) (string, error) {
-	for _, child := range fs.cwd.Children {
-		if child.Name == name {
-			if child.IsDir {
-				return "", fmt.Errorf("is a directory: %s", name)
+	node, err := fs.resolve(name)
+	if err != nil {
+		return "", fmt.Errorf("no such file: %s", name)
+	}
+	if node.IsDir {
+		return "", fmt.Errorf("is a directory: %s", name)
+	}
+	return node.Content, nil
+}
+
+// resolve walks a slash-separated path from cwd (or root for ~).
+func (fs *FileSystem) resolve(path string) (*FSNode, error) {
+	path = strings.TrimPrefix(path, "./")
+	parts := strings.Split(path, "/")
+	cur := fs.cwd
+	for _, part := range parts {
+		if part == "" || part == "." {
+			continue
+		}
+		if part == ".." {
+			if len(fs.stack) > 0 {
+				cur = fs.stack[len(fs.stack)-1]
+			} else {
+				cur = fs.root
 			}
-			return child.Content, nil
+			continue
+		}
+		if part == "~" {
+			cur = fs.root
+			continue
+		}
+		found := false
+		for _, child := range cur.Children {
+			if child.Name == part {
+				cur = child
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("not found: %s", path)
 		}
 	}
-	return "", fmt.Errorf("no such file: %s", name)
+	return cur, nil
 }
 
 // Pwd returns the current working directory path.
