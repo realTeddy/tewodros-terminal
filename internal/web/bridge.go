@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"tewodros-terminal/internal/content"
+	"tewodros-terminal/internal/email"
 	gb "tewodros-terminal/internal/guestbook"
 	"tewodros-terminal/internal/tui"
 )
@@ -38,15 +39,22 @@ type webSession struct {
 	cmds      *tui.Commands
 	input     string
 	guestbook *gb.SQLiteGuestbook
+	email     *email.Sender
 	clientIP  string
 
 	// Guestbook interactive mode
 	gbMode bool
 	gbStep int
 	gbName string
+
+	// Contact interactive mode
+	ctMode  bool
+	ctStep  int
+	ctName  string
+	ctEmail string
 }
 
-func HandleWebSocket(guestbook *gb.SQLiteGuestbook) http.HandlerFunc {
+func HandleWebSocket(guestbook *gb.SQLiteGuestbook, emailSender *email.Sender) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -57,7 +65,7 @@ func HandleWebSocket(guestbook *gb.SQLiteGuestbook) http.HandlerFunc {
 
 		root := content.BuildTree()
 		fs := tui.NewFileSystem(root)
-		cmds := tui.NewCommands(fs, guestbook)
+		cmds := tui.NewCommands(fs, guestbook, emailSender)
 
 		clientIP := r.Header.Get("CF-Connecting-IP")
 		if clientIP == "" {
@@ -69,6 +77,7 @@ func HandleWebSocket(guestbook *gb.SQLiteGuestbook) http.HandlerFunc {
 			fs:        fs,
 			cmds:      cmds,
 			guestbook: guestbook,
+			email:     emailSender,
 			clientIP:  clientIP,
 		}
 
@@ -155,6 +164,11 @@ func (s *webSession) submitInput() {
 		return
 	}
 
+	if s.ctMode {
+		s.handleContactInput(input)
+		return
+	}
+
 	if input == "" {
 		s.sendPrompt()
 		return
@@ -175,6 +189,13 @@ func (s *webSession) submitInput() {
 	}
 
 	result := s.cmds.Execute(cmd, args)
+
+	if result == "__CONTACT_INTERACTIVE__" {
+		s.ctMode = true
+		s.ctStep = 0
+		s.send("Send me a message!\r\nYour name: ")
+		return
+	}
 
 	if result == "__GUESTBOOK_INTERACTIVE__" {
 		s.gbMode = true
@@ -218,6 +239,46 @@ func (s *webSession) handleGuestbookInput(input string) {
 			}
 		}
 		s.gbName = ""
+		s.sendPrompt()
+	}
+}
+
+func (s *webSession) handleContactInput(input string) {
+	switch s.ctStep {
+	case 0:
+		if input == "" {
+			s.send("Name cannot be empty. Your name: ")
+			return
+		}
+		s.ctName = input
+		s.ctStep = 1
+		s.send("Your email: ")
+	case 1:
+		if input == "" || !strings.Contains(input, "@") {
+			s.send("Please enter a valid email: ")
+			return
+		}
+		s.ctEmail = input
+		s.ctStep = 2
+		s.send("Your message: ")
+	case 2:
+		if input == "" {
+			s.send("Message cannot be empty. Your message: ")
+			return
+		}
+		s.ctMode = false
+		s.ctStep = 0
+		if s.email != nil {
+			if err := s.email.Send(s.ctName, s.ctEmail, input); err != nil {
+				s.send("\x1b[31mError sending: " + err.Error() + "\x1b[0m\r\n")
+			} else {
+				s.send("Message sent! I'll get back to you soon.\r\n")
+			}
+		} else {
+			s.send("Email not configured. Reach me at assefa@tewodros.me\r\n")
+		}
+		s.ctName = ""
+		s.ctEmail = ""
 		s.sendPrompt()
 	}
 }

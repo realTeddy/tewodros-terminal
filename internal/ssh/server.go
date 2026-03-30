@@ -12,6 +12,7 @@ import (
 	charmssh "github.com/charmbracelet/ssh"
 
 	"tewodros-terminal/internal/content"
+	"tewodros-terminal/internal/email"
 	gb "tewodros-terminal/internal/guestbook"
 	"tewodros-terminal/internal/tui"
 )
@@ -22,13 +23,14 @@ type Config struct {
 	Port       string
 	HostKeyDir string
 	Guestbook  *gb.SQLiteGuestbook
+	Email      *email.Sender
 }
 
 // NewServer creates a Wish SSH server that serves the terminal portfolio.
 func NewServer(cfg Config) (*charmssh.Server, error) {
 	handler := func(s charmssh.Session) (tea.Model, []tea.ProgramOption) {
 		root := content.BuildTree()
-		app := tui.NewApp(root, cfg.Guestbook)
+		app := tui.NewApp(root, cfg.Guestbook, cfg.Email)
 
 		// Set client IP for rate limiting
 		addr := s.RemoteAddr().String()

@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"tewodros-terminal/internal/email"
 	gb "tewodros-terminal/internal/guestbook"
 	sshserver "tewodros-terminal/internal/ssh"
 	webserver "tewodros-terminal/internal/web"
@@ -20,8 +21,19 @@ func main() {
 	httpPort := envOr("HTTP_PORT", "8080")
 	hostKeyDir := envOr("HOST_KEY_DIR", ".ssh")
 	dbPath := envOr("DB_PATH", "guestbook.db")
+	resendKey := os.Getenv("RESEND_API_KEY")
+	contactEmail := envOr("CONTACT_EMAIL", "assefa@tewodros.me")
 
 	os.MkdirAll(hostKeyDir, 0700)
+
+	// Email sender (optional — works without it)
+	var emailSender *email.Sender
+	if resendKey != "" {
+		emailSender = email.New(resendKey, contactEmail)
+		log.Println("Email sender configured")
+	} else {
+		log.Println("RESEND_API_KEY not set — contact command will show fallback")
+	}
 
 	guestbook, err := gb.New(dbPath)
 	if err != nil {
@@ -34,6 +46,7 @@ func main() {
 		Port:       sshPort,
 		HostKeyDir: hostKeyDir,
 		Guestbook:  guestbook,
+		Email:      emailSender,
 	})
 	if err != nil {
 		log.Fatalf("failed to create ssh server: %v", err)
@@ -50,6 +63,7 @@ func main() {
 		Host:      httpHost,
 		Port:      httpPort,
 		Guestbook: guestbook,
+		Email:     emailSender,
 	})
 
 	go func() {

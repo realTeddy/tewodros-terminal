@@ -18,19 +18,26 @@ type GuestEntry struct {
 	CreatedAt string
 }
 
+// EmailSender defines the interface for sending contact emails.
+type EmailSender interface {
+	Send(fromName, fromEmail, message string) error
+}
+
 // Commands handles parsing and executing terminal commands.
 type Commands struct {
 	fs        *FileSystem
 	guestbook Guestbook
+	email     EmailSender
 	names     []string
 }
 
 // NewCommands creates a command executor with the given filesystem and optional guestbook.
-func NewCommands(fs *FileSystem, gb Guestbook) *Commands {
+func NewCommands(fs *FileSystem, gb Guestbook, email EmailSender) *Commands {
 	return &Commands{
 		fs:        fs,
 		guestbook: gb,
-		names:     []string{"about", "ls", "cd", "cat", "tree", "help", "clear", "whoami", "neofetch", "guestbook", "exit", "quit"},
+		email:     email,
+		names:     []string{"about", "contact", "ls", "cd", "cat", "tree", "help", "clear", "whoami", "neofetch", "guestbook", "exit", "quit"},
 	}
 }
 
@@ -49,6 +56,8 @@ func (c *Commands) Execute(name string, args []string) string {
 	switch name {
 	case "about":
 		return c.execAbout()
+	case "contact":
+		return "__CONTACT_INTERACTIVE__"
 	case "ls":
 		return c.execLs()
 	case "cd":
@@ -120,6 +129,7 @@ func (c *Commands) execHelp() string {
 	return `Available commands:
 
   about            About me
+  contact          Send me a message
   ls               List directory contents
   cd <dir>         Change directory (cd .., cd ~)
   cat <file>       Display file contents

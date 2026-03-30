@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 
+	"tewodros-terminal/internal/email"
 	gb "tewodros-terminal/internal/guestbook"
 )
 
@@ -17,6 +18,7 @@ type Config struct {
 	Host      string
 	Port      string
 	Guestbook *gb.SQLiteGuestbook
+	Email     *email.Sender
 }
 
 func NewServer(cfg Config) *http.Server {
@@ -28,7 +30,7 @@ func NewServer(cfg Config) *http.Server {
 	}
 	mux.Handle("/", http.FileServer(http.FS(staticContent)))
 
-	mux.HandleFunc("/ws", HandleWebSocket(cfg.Guestbook))
+	mux.HandleFunc("/ws", HandleWebSocket(cfg.Guestbook, cfg.Email))
 
 	return &http.Server{
 		Addr:    net.JoinHostPort(cfg.Host, cfg.Port),

@@ -18,7 +18,7 @@ func newTestApp() *App {
 			}},
 		},
 	}
-	return NewApp(root, nil)
+	return NewApp(root, nil, nil)
 }
 
 func TestAppInitShowsWelcome(t *testing.T) {

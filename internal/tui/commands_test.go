@@ -49,7 +49,7 @@ func testFS() *FileSystem {
 
 func TestExecHelp(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("help", nil)
 	if !strings.Contains(output, "ls") {
 		t.Error("help should list ls command")
@@ -61,7 +61,7 @@ func TestExecHelp(t *testing.T) {
 
 func TestExecLs(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("ls", nil)
 	if !strings.Contains(output, "about.txt") {
 		t.Error("ls should show about.txt")
@@ -73,7 +73,7 @@ func TestExecLs(t *testing.T) {
 
 func TestExecCd(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("cd", []string{"projects"})
 	if strings.Contains(output, "error") || strings.Contains(output, "no such") {
 		t.Errorf("cd projects should succeed, got: %s", output)
@@ -85,7 +85,7 @@ func TestExecCd(t *testing.T) {
 
 func TestExecCat(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("cat", []string{"about.txt"})
 	if !strings.Contains(output, "About me.") {
 		t.Errorf("cat should show content, got: %s", output)
@@ -94,7 +94,7 @@ func TestExecCat(t *testing.T) {
 
 func TestExecTree(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("tree", nil)
 	if !strings.Contains(output, "about.txt") {
 		t.Error("tree should show about.txt")
@@ -103,7 +103,7 @@ func TestExecTree(t *testing.T) {
 
 func TestExecWhoami(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("whoami", nil)
 	if output == "" {
 		t.Error("whoami should return something")
@@ -112,7 +112,7 @@ func TestExecWhoami(t *testing.T) {
 
 func TestExecNeofetch(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("neofetch", nil)
 	if output == "" {
 		t.Error("neofetch should return something")
@@ -124,7 +124,7 @@ func TestExecNeofetch(t *testing.T) {
 
 func TestExecUnknown(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("foobar", nil)
 	if !strings.Contains(output, "not found") {
 		t.Error("unknown command should say not found")
@@ -133,7 +133,7 @@ func TestExecUnknown(t *testing.T) {
 
 func TestExecCatNoArgs(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	output := cmds.Execute("cat", nil)
 	if !strings.Contains(output, "usage") && !strings.Contains(output, "Usage") {
 		t.Error("cat with no args should show usage")
@@ -142,7 +142,7 @@ func TestExecCatNoArgs(t *testing.T) {
 
 func TestCompleteCommand(t *testing.T) {
 	fs := testFS()
-	cmds := NewCommands(fs, nil)
+	cmds := NewCommands(fs, nil, nil)
 	matches := cmds.CompleteCommand("he")
 	found := false
 	for _, m := range matches {
