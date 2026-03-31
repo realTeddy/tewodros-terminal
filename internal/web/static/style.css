@@ -27,7 +27,42 @@ html, body {
 
 .no-js h1 {
     color: #8be9fd;
-    margin-bottom: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.no-js .subtitle {
+    color: #bd93f9;
+    margin-bottom: 1.5rem;
+}
+
+.no-js h2 {
+    color: #8be9fd;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.no-js p {
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.no-js ul {
+    list-style: none;
+    padding: 0;
+}
+
+.no-js ul li {
+    margin-bottom: 0.25rem;
+}
+
+.no-js a {
+    color: #50fa7b;
+    text-decoration: none;
+}
+
+.no-js a:hover {
+    text-decoration: underline;
 }
 
 .no-js pre {
