@@ -60,11 +60,19 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p 2222 "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Build .env from secrets
+          cat > /tmp/dotenv << ENVEOF
+          RESEND_API_KEY=${RESEND_API_KEY}
+          CONTACT_EMAIL=${CONTACT_EMAIL}
+          ENVEOF
 
           scp -P 2222 -i ~/.ssh/deploy_key \
             tewodros-terminal \
@@ -74,8 +82,13 @@ jobs:
             deploy/tewodros-terminal.service \
             "${SERVER_USER}@${SERVER_HOST}:/tmp/tewodros-terminal.service"
 
+          scp -P 2222 -i ~/.ssh/deploy_key \
+            /tmp/dotenv \
+            "${SERVER_USER}@${SERVER_HOST}:/opt/tewodros-terminal/.env"
+
           ssh -p 2222 -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
             cd /opt/tewodros-terminal
+            chmod 600 .env
             mv tewodros-terminal-new tewodros-terminal
             chmod +x tewodros-terminal
             sudo mv /tmp/tewodros-terminal.service /etc/systemd/system/tewodros-terminal.service

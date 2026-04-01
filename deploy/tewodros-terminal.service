@@ -19,6 +19,7 @@ Environment=TLS_CERT=/opt/tewodros-terminal/certs/cert.pem
 Environment=TLS_KEY=/opt/tewodros-terminal/certs/key.pem
 Environment=HOST_KEY_DIR=/opt/tewodros-terminal/.ssh
 Environment=DB_PATH=/opt/tewodros-terminal/guestbook.db
+EnvironmentFile=-/opt/tewodros-terminal/.env
 
 NoNewPrivileges=true
 ProtectSystem=strict
