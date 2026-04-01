@@ -12,9 +12,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+
+      - name: Install frontend dependencies
+        run: cd internal/web/frontend && npm ci
+
+      - name: Run frontend tests
+        run: cd internal/web/frontend && npx vitest run
 
       - name: Run tests
         run: go test ./... -v -count=1
@@ -27,9 +37,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+
+      - name: Build frontend
+        run: |
+          cd internal/web/frontend && npm ci
+          npx esbuild src/main.ts --bundle --minify --target=es2020 --outfile=../static/terminal.min.js
+          npx esbuild ../static/style.css --minify --outfile=../static/style.min.css
+          npx html-minifier-terser --collapse-whitespace --remove-comments --remove-redundant-attributes --minify-js '{"mangle":false}' --minify-urls -o ../static/index.html ../static/index.dev.html
 
       - name: Build for Linux amd64
         run: GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o tewodros-terminal ./cmd/server
