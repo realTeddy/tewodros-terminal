@@ -19,7 +19,6 @@ echo "==> Obtaining certificate for $DOMAIN..."
 certbot certonly --standalone \
   --non-interactive \
   --agree-tos \
-  --preferred-challenges tls-alpn-01 \
   --email assefa@tewodros.me \
   -d "$DOMAIN"
 
