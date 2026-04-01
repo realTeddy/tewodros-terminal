@@ -70,9 +70,15 @@ jobs:
             tewodros-terminal \
             "${SERVER_USER}@${SERVER_HOST}:/opt/tewodros-terminal/tewodros-terminal-new"
 
+          scp -P 2222 -i ~/.ssh/deploy_key \
+            deploy/tewodros-terminal.service \
+            "${SERVER_USER}@${SERVER_HOST}:/tmp/tewodros-terminal.service"
+
           ssh -p 2222 -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
             cd /opt/tewodros-terminal
             mv tewodros-terminal-new tewodros-terminal
             chmod +x tewodros-terminal
+            sudo mv /tmp/tewodros-terminal.service /etc/systemd/system/tewodros-terminal.service
+            sudo systemctl daemon-reload
             sudo systemctl restart tewodros-terminal
           EOF
