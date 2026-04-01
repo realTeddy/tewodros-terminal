@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --minify --target=es2020 --outfile=../static/terminal.min.js",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "html-minifier-terser": "^7.2.0",
+    "vitest": "^3.0.0"
+  }
+}

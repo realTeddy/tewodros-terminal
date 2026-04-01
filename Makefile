@@ -1,17 +1,28 @@
-.PHONY: build run test clean deploy deploy-setup
+.PHONY: build run test clean deploy deploy-setup frontend-deps frontend-build frontend-test
 
 BINARY=tewodros-terminal
 GOFLAGS=-ldflags="-s -w"
 SERVER=deploy@150.136.59.125
 SSH_OPTS=-p 2222 -i .ssh/oracle_vm
 
-build:
+frontend-deps:
+	cd internal/web/frontend && npm install
+
+frontend-build:
+	cd internal/web/frontend && npx esbuild src/main.ts --bundle --minify --target=es2020 --outfile=../static/terminal.min.js
+	cd internal/web/frontend && npx esbuild ../static/style.css --minify --outfile=../static/style.min.css
+	cd internal/web/frontend && npx html-minifier-terser --collapse-whitespace --remove-comments --remove-redundant-attributes --minify-js '{"mangle":false}' --minify-urls -o ../static/index.html ../static/index.dev.html
+
+frontend-test:
+	cd internal/web/frontend && npx vitest run
+
+build: frontend-build
 	go build $(GOFLAGS) -o $(BINARY) ./cmd/server
 
-build-linux:
+build-linux: frontend-build
 	GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o $(BINARY)-linux-amd64 ./cmd/server
 
-build-arm:
+build-arm: frontend-build
 	GOOS=linux GOARCH=arm64 go build $(GOFLAGS) -o $(BINARY)-linux-arm64 ./cmd/server
 
 run:
