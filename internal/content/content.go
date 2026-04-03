@@ -34,7 +34,8 @@ When I'm not coding and nerding out over the latest tech trends,
 I like to listen to music and watch movies. It's my way of unwinding
 and finding inspiration outside the world of code.
 
-linkedin.com/in/tewodrosassefa`,
+https://linkedin.com/in/tewodrosassefa
+`,
 	}
 }
 

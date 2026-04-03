@@ -57,11 +57,26 @@ export class Terminal {
     this.container.scrollTop = this.container.scrollHeight;
   }
 
+  private static URL_RE = /(https?:\/\/[^\s)]+)/g;
+
   private appendText(text: string, classes: string): void {
-    const span = document.createElement("span");
-    if (classes) span.className = classes;
-    span.textContent = text;
-    this.output.insertBefore(span, this.cursor);
+    const parts = text.split(Terminal.URL_RE);
+    for (const part of parts) {
+      if (Terminal.URL_RE.test(part)) {
+        const a = document.createElement("a");
+        a.href = part;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        if (classes) a.className = classes;
+        a.textContent = part;
+        this.output.insertBefore(a, this.cursor);
+      } else if (part) {
+        const span = document.createElement("span");
+        if (classes) span.className = classes;
+        span.textContent = part;
+        this.output.insertBefore(span, this.cursor);
+      }
+    }
   }
 
   private removeLastChar(): void {

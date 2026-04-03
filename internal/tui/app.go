@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // App is the root Bubble Tea model for the terminal portfolio.
@@ -271,12 +272,21 @@ func (a *App) View() tea.View {
 		b.WriteString(line)
 	}
 
-	if a.gbMode {
+	if a.gbMode || a.ctMode {
 		b.WriteString(a.input)
 	} else {
 		b.WriteString(renderPrompt(a.fs.Pwd()))
 		b.WriteString(a.input)
 	}
 
-	return tea.NewView(b.String())
+	content := b.String()
+	v := tea.NewView(content)
+
+	// Place the cursor at the end of the content.
+	lines := strings.Split(content, "\n")
+	y := len(lines) - 1
+	x := ansi.StringWidth(lines[y])
+	v.Cursor = tea.NewCursor(x, y)
+
+	return v
 }

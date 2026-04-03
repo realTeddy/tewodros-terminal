@@ -59,6 +59,16 @@ html, body {
 
 .bold { font-weight: bold; }
 
+.term-output a {
+    color: #8be9fd;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.term-output a:hover {
+    color: #a4ffff;
+}
+
 .term-cursor {
     display: inline-block;
     width: 0.6em;
