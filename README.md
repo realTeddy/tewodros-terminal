@@ -5,25 +5,28 @@ A real interactive terminal portfolio served over SSH and HTTPS. Not a fake term
 ```
 $ ssh tewodros.me
 
-  tewodros.me — not a fake terminal. ssh tewodros.me if you don't believe me.
+  tewodros.me — welcome to my terminal portfolio.
 
   Try about, contact, or help to see all commands.
 
 visitor@tewodros.me:~$ help
 
   Available commands:
-    ls          List directory contents
-    cd <dir>    Change directory
-    cat <file>  Read a file
-    tree        Show directory tree
-    about       About me
-    contact     Send me a message
-    guestbook   Sign or read the guestbook
-    neofetch    System info
-    whoami      Who are you?
-    help        Show this help
-    clear       Clear the screen
-    exit        Goodbye
+
+    about            About me
+    contact          Send me a message
+    github           View source code
+    ls               List directory contents
+    cd <dir>         Change directory (cd .., cd ~)
+    cat <file>       Display file contents
+    tree             Show full directory tree
+    help             Show this help message
+    clear            Clear the screen
+    whoami           Who are you?
+    neofetch         System info
+    guestbook        Leave a message
+    guestbook --read View recent messages
+    exit / quit      Close the session
 
 visitor@tewodros.me:~$
 ```
@@ -31,10 +34,9 @@ visitor@tewodros.me:~$
 ## How It Works
 
 ```
-                    ┌──────────────┐
-                    │  Cloudflare  │
-                    │   DNS/TLS    │
-                    └──────┬───────┘
+              ┌────────────────────────┐
+              │    Let's Encrypt TLS   │
+              └────────────┬───────────┘
                            │
               ┌────────────┼────────────┐
               │            │            │
@@ -67,25 +69,26 @@ visitor@tewodros.me:~$
 
 **SSH path:** Visitors `ssh` directly into a Bubble Tea TUI via [Wish](https://github.com/charmbracelet/wish) -- full terminal support with colors, key bindings, and tab completion.
 
-**Web path:** The HTTPS server upgrades to a WebSocket connection that bridges a line-based REPL with the same command engine, no JavaScript terminal emulator required.
+**Web path:** The HTTPS server upgrades to a WebSocket connection that bridges the same command engine with a lightweight custom terminal (ANSI parser + renderer, no xterm.js dependency).
 
 Each connection gets its own isolated virtual filesystem and session state.
 
 ## Features
 
-- **Virtual filesystem** -- `ls`, `cd`, `cat`, `tree` through portfolio content (about, skills, projects, resume, contact)
+- **Virtual filesystem** -- `ls`, `cd`, `cat`, `tree` through portfolio content
 - **Guestbook** -- SQLite-backed with rate limiting (5 entries/IP/5min) and input sanitization (strips ANSI escapes, control chars)
 - **Contact form** -- Interactive email form via [Resend](https://resend.com) API (optional, graceful fallback)
 - **Tab completion** -- Commands and filesystem paths
 - **Dual access** -- SSH and WebSocket with shared command engine
 - **Zero CGO** -- Pure Go SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), cross-compiles anywhere
-- **TLS support** -- Optional TLS for direct HTTPS or Cloudflare Full SSL
+- **TLS support** -- Optional TLS via Let's Encrypt for direct HTTPS
 
 ## Quick Start
 
 ### Prerequisites
 
-- Go 1.22+ (uses `go.mod` version)
+- Go 1.26+ (uses `go.mod` version)
+- Node.js 22+ (for frontend build)
 
 ### Run locally
 
@@ -149,13 +152,15 @@ See [deploy/tewodros-terminal.service](deploy/tewodros-terminal.service) for the
 
 ### CI/CD
 
-The [GitHub Actions workflow](.github/workflows/deploy.yml) runs tests on every push and deploys to the server on pushes to `main`. It uses three repository secrets:
+The [GitHub Actions workflow](.github/workflows/deploy.yml) runs tests on every push and deploys to the server on pushes to `main`. It uses these repository secrets:
 
 | Secret | Description |
 |--------|-------------|
 | `DEPLOY_SSH_KEY` | SSH private key for deployment |
 | `SERVER_HOST` | Server IP or hostname |
 | `SERVER_USER` | SSH username on the server |
+| `RESEND_API_KEY` | Resend API key for contact form |
+| `CONTACT_EMAIL` | Email recipient for contact form |
 
 ## Project Structure
 
@@ -167,7 +172,8 @@ internal/
   guestbook/         SQLite guestbook with rate limiting
   ssh/               Wish SSH server setup
   tui/               Bubble Tea app, commands, filesystem, views
-  web/               HTTP server and WebSocket bridge
+  web/               HTTP server, WebSocket bridge, static assets
+    frontend/        Custom terminal UI (TypeScript, ANSI parser)
 deploy/              Systemd service unit
 scripts/             Infrastructure provisioning helpers
 ```
