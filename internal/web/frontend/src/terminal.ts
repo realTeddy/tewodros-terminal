@@ -192,7 +192,10 @@ export class Terminal {
   }
 
   private setupInput(): void {
-    this.container.addEventListener("click", () => this.hiddenInput.focus());
+    this.container.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).tagName === "A") return;
+      this.hiddenInput.focus();
+    });
 
     this.hiddenInput.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "Enter") {
