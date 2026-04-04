@@ -1,13 +1,17 @@
+//go:build !windows
+
 package web
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 
+	tea "charm.land/bubbletea/v2"
+	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 
 	"tewodros-terminal/internal/content"
@@ -16,42 +20,10 @@ import (
 	"tewodros-terminal/internal/tui"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-type wsMessage struct {
+type resizeMsg struct {
 	Type string `json:"type"`
-	Data string `json:"data"`
 	Cols int    `json:"cols"`
 	Rows int    `json:"rows"`
-}
-
-// webSession is a simple line-based terminal that shares the same
-// filesystem/commands as the Bubble Tea SSH app but renders directly
-// via WebSocket without Bubble Tea's cursor-based renderer.
-type webSession struct {
-	conn      *websocket.Conn
-	mu        sync.Mutex
-	fs        *tui.FileSystem
-	cmds      *tui.Commands
-	input     string
-	guestbook *gb.SQLiteGuestbook
-	email     *email.Sender
-	clientIP  string
-
-	// Guestbook interactive mode
-	gbMode bool
-	gbStep int
-	gbName string
-
-	// Contact interactive mode
-	ctMode  bool
-	ctStep  int
-	ctName  string
-	ctEmail string
 }
 
 func HandleWebSocket(guestbook *gb.SQLiteGuestbook, emailSender *email.Sender) http.HandlerFunc {
@@ -63,255 +35,100 @@ func HandleWebSocket(guestbook *gb.SQLiteGuestbook, emailSender *email.Sender) h
 		}
 		defer conn.Close()
 
-		root := content.BuildTree()
-		fs := tui.NewFileSystem(root)
-		cmds := tui.NewCommands(fs, guestbook, emailSender)
+		// Create PTY pair
+		ptmx, ttyFile, err := pty.Open()
+		if err != nil {
+			log.Printf("pty open failed: %v", err)
+			return
+		}
+		defer ptmx.Close()
+		defer ttyFile.Close()
 
+		// Set initial size
+		_ = pty.Setsize(ptmx, &pty.Winsize{Rows: 24, Cols: 80})
+
+		// Set TERM for color support
+		environ := []string{"TERM=xterm-256color"}
+
+		// Extract client IP
 		clientIP := r.Header.Get("CF-Connecting-IP")
 		if clientIP == "" {
 			clientIP, _, _ = net.SplitHostPort(r.RemoteAddr)
 		}
 
-		s := &webSession{
-			conn:      conn,
-			fs:        fs,
-			cmds:      cmds,
-			guestbook: guestbook,
-			email:     emailSender,
-			clientIP:  clientIP,
-		}
+		// Build Bubble Tea app
+		root := content.BuildTree()
+		app := tui.NewApp(root, guestbook, emailSender)
+		app.SetClientIP(clientIP)
 
-		s.sendWelcome()
-		s.sendPrompt()
+		// Run Bubble Tea on the PTY slave
+		p := tea.NewProgram(app,
+			tea.WithInput(ttyFile),
+			tea.WithOutput(ttyFile),
+			tea.WithEnvironment(environ),
+			tea.WithWindowSize(80, 24),
+		)
 
+		var wg sync.WaitGroup
+
+		// Start Bubble Tea
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := p.Run(); err != nil {
+				log.Printf("bubbletea program exited: %v", err)
+			}
+			ptmx.Close()
+		}()
+
+		// PTY master → WebSocket
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			buf := make([]byte, 4096)
+			for {
+				n, err := ptmx.Read(buf)
+				if n > 0 {
+					if writeErr := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); writeErr != nil {
+						break
+					}
+				}
+				if err != nil {
+					break
+				}
+			}
+			conn.Close()
+		}()
+
+		// WebSocket → PTY master
 		for {
-			_, raw, err := conn.ReadMessage()
+			msgType, raw, err := conn.ReadMessage()
 			if err != nil {
-				return
+				break
 			}
 
-			var msg wsMessage
-			if err := json.Unmarshal(raw, &msg); err != nil {
-				s.handleInput(string(raw))
-				continue
+			if msgType == websocket.TextMessage {
+				var msg resizeMsg
+				if json.Unmarshal(raw, &msg) == nil && msg.Type == "resize" && msg.Cols > 0 && msg.Rows > 0 {
+					_ = pty.Setsize(ptmx, &pty.Winsize{
+						Rows: uint16(msg.Rows),
+						Cols: uint16(msg.Cols),
+					})
+					p.Send(tea.WindowSizeMsg{Width: msg.Cols, Height: msg.Rows})
+					continue
+				}
 			}
 
-			switch msg.Type {
-			case "input":
-				s.handleInput(msg.Data)
-			case "resize":
-				// Resize is a no-op for the line-based REPL
+			if _, err := ptmx.Write(raw); err != nil {
+				break
 			}
 		}
-	}
-}
 
-func (s *webSession) send(data string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.conn.WriteMessage(websocket.TextMessage, []byte(data))
-}
+		// Clean up
+		ttyFile.Close()
+		ptmx.Write([]byte{3})
+		io.Copy(io.Discard, ptmx)
 
-func (s *webSession) sendWelcome() {
-	s.send("\x1b[1;36m  tewodros.me\x1b[0m\x1b[90m — not a fake terminal. \x1b[36mssh tewodros.me\x1b[90m if you don't believe me.\x1b[0m\r\n")
-	s.send("\r\n")
-	s.send("  Try \x1b[32mabout\x1b[0m, \x1b[32mcontact\x1b[0m, or \x1b[32mhelp\x1b[0m to see all commands.\r\n")
-	s.send("\r\n")
-}
-
-func (s *webSession) sendPrompt() {
-	prompt := "\x1b[32mvisitor\x1b[90m@\x1b[36mtewodros.me\x1b[90m:\x1b[34m" +
-		s.fs.Pwd() + "\x1b[90m$ \x1b[0m"
-	s.send(prompt)
-}
-
-func (s *webSession) handleInput(data string) {
-	for _, ch := range data {
-		switch ch {
-		case '\r', '\n':
-			s.send("\r\n")
-			s.submitInput()
-		case 127, '\b': // Backspace
-			if len(s.input) > 0 {
-				s.input = s.input[:len(s.input)-1]
-				s.send("\b \b") // Move back, overwrite with space, move back
-			}
-		case '\t': // Tab completion
-			s.handleTab()
-		case 3: // Ctrl+C
-			s.input = ""
-			s.send("^C\r\n")
-			s.sendPrompt()
-		case 4: // Ctrl+D
-			s.send("\r\nGoodbye!\r\n")
-			s.conn.Close()
-			return
-		default:
-			if ch >= 32 { // Printable characters only
-				s.input += string(ch)
-				s.send(string(ch)) // Echo
-			}
-		}
-	}
-}
-
-func (s *webSession) submitInput() {
-	input := strings.TrimSpace(s.input)
-	s.input = ""
-
-	if s.gbMode {
-		s.handleGuestbookInput(input)
-		return
-	}
-
-	if s.ctMode {
-		s.handleContactInput(input)
-		return
-	}
-
-	if input == "" {
-		s.sendPrompt()
-		return
-	}
-
-	cmd, args := tui.ParseCommand(input)
-
-	if cmd == "exit" || cmd == "quit" {
-		s.send("Goodbye!\r\n")
-		s.conn.Close()
-		return
-	}
-
-	if cmd == "clear" {
-		s.send("\x1b[2J\x1b[H") // Clear screen + move cursor home
-		s.sendPrompt()
-		return
-	}
-
-	result := s.cmds.Execute(cmd, args)
-
-	if result == "__CONTACT_INTERACTIVE__" {
-		s.ctMode = true
-		s.ctStep = 0
-		s.send("Send me a message!\r\nYour name: ")
-		return
-	}
-
-	if result == "__GUESTBOOK_INTERACTIVE__" {
-		s.gbMode = true
-		s.gbStep = 0
-		s.send("Sign the guestbook!\r\nEnter your name: ")
-		return
-	}
-
-	if result != "" {
-		// Convert \n to \r\n for terminal display
-		lines := strings.Split(result, "\n")
-		s.send(strings.Join(lines, "\r\n"))
-		s.send("\r\n")
-	}
-
-	s.sendPrompt()
-}
-
-func (s *webSession) handleGuestbookInput(input string) {
-	switch s.gbStep {
-	case 0:
-		if input == "" {
-			s.send("Name cannot be empty. Enter your name: ")
-			return
-		}
-		s.gbName = input
-		s.gbStep = 1
-		s.send("Enter your message: ")
-	case 1:
-		if input == "" {
-			s.send("Message cannot be empty. Enter your message: ")
-			return
-		}
-		s.gbMode = false
-		s.gbStep = 0
-		if s.guestbook != nil {
-			if err := s.guestbook.Add(s.gbName, input, s.clientIP); err != nil {
-				s.send("\x1b[31mError saving: " + err.Error() + "\x1b[0m\r\n")
-			} else {
-				s.send("Thanks, " + s.gbName + "! Your message has been saved.\r\n")
-			}
-		}
-		s.gbName = ""
-		s.sendPrompt()
-	}
-}
-
-func (s *webSession) handleContactInput(input string) {
-	switch s.ctStep {
-	case 0:
-		if input == "" {
-			s.send("Name cannot be empty. Your name: ")
-			return
-		}
-		s.ctName = input
-		s.ctStep = 1
-		s.send("Your email: ")
-	case 1:
-		if input == "" || !strings.Contains(input, "@") {
-			s.send("Please enter a valid email: ")
-			return
-		}
-		s.ctEmail = input
-		s.ctStep = 2
-		s.send("Your message: ")
-	case 2:
-		if input == "" {
-			s.send("Message cannot be empty. Your message: ")
-			return
-		}
-		s.ctMode = false
-		s.ctStep = 0
-		if s.email != nil {
-			if err := s.email.Send(s.ctName, s.ctEmail, input); err != nil {
-				s.send("\x1b[31mError sending: " + err.Error() + "\x1b[0m\r\n")
-			} else {
-				s.send("Message sent! I'll get back to you soon.\r\n")
-			}
-		} else {
-			s.send("Email not configured. Reach me at assefa@tewodros.me\r\n")
-		}
-		s.ctName = ""
-		s.ctEmail = ""
-		s.sendPrompt()
-	}
-}
-
-func (s *webSession) handleTab() {
-	parts := strings.Fields(s.input)
-	if len(parts) == 0 {
-		return
-	}
-
-	var completed string
-	if len(parts) == 1 && !strings.HasSuffix(s.input, " ") {
-		matches := s.cmds.CompleteCommand(parts[0])
-		if len(matches) == 1 {
-			completed = matches[0] + " "
-		}
-	} else {
-		cmd := parts[0]
-		prefix := ""
-		if len(parts) > 1 {
-			prefix = parts[len(parts)-1]
-		}
-		matches := s.cmds.CompleteArg(cmd, prefix)
-		if len(matches) == 1 {
-			parts[len(parts)-1] = matches[0]
-			completed = strings.Join(parts, " ")
-		}
-	}
-
-	if completed != "" {
-		// Clear current input from display, write new input
-		s.send(strings.Repeat("\b \b", len(s.input)))
-		s.input = completed
-		s.send(s.input)
+		wg.Wait()
 	}
 }
