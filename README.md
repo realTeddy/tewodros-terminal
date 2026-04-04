@@ -50,8 +50,9 @@ visitor@tewodros.me:~$
              │             │            │
              ▼             ▼            │
         ┌──────────┐ ┌──────────┐      │
-        │ Bubble   │ │WebSocket │      │
-        │   Tea    │ │  Bridge  │      │
+        │ Bubble   │ │PTY Bridge│      │
+        │   Tea    │ │→Bubble   │      │
+        │          │ │  Tea     │      │
         └────┬─────┘ └────┬─────┘      │
              │             │            │
              └──────┬──────┘            │
@@ -69,9 +70,9 @@ visitor@tewodros.me:~$
 
 **SSH path:** Visitors `ssh` directly into a Bubble Tea TUI via [Wish](https://github.com/charmbracelet/wish) -- full terminal support with colors, key bindings, and tab completion.
 
-**Web path:** The HTTPS server upgrades to a WebSocket connection that bridges the same command engine with a lightweight custom terminal (ANSI parser + renderer, no xterm.js dependency).
+**Web path:** The HTTPS server upgrades to a WebSocket connection, spawns a PTY running the same Bubble Tea app, and pipes raw bytes to a custom screen-buffer terminal in the browser (ANSI parser + renderer, no xterm.js dependency). Browser visitors see the identical TUI as SSH users.
 
-Each connection gets its own isolated virtual filesystem and session state.
+Each connection gets its own isolated PTY, virtual filesystem, and session state.
 
 ## Features
 
@@ -79,7 +80,7 @@ Each connection gets its own isolated virtual filesystem and session state.
 - **Guestbook** -- SQLite-backed with rate limiting (5 entries/IP/5min) and input sanitization (strips ANSI escapes, control chars)
 - **Contact form** -- Interactive email form via [Resend](https://resend.com) API (optional, graceful fallback)
 - **Tab completion** -- Commands and filesystem paths
-- **Dual access** -- SSH and WebSocket with shared command engine
+- **Dual access** -- SSH and WebSocket, both running the same Bubble Tea TUI via PTY
 - **Zero CGO** -- Pure Go SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite), cross-compiles anywhere
 - **TLS support** -- Optional TLS via Let's Encrypt for direct HTTPS
 
@@ -172,8 +173,8 @@ internal/
   guestbook/         SQLite guestbook with rate limiting
   ssh/               Wish SSH server setup
   tui/               Bubble Tea app, commands, filesystem, views
-  web/               HTTP server, WebSocket bridge, static assets
-    frontend/        Custom terminal UI (TypeScript, ANSI parser)
+  web/               HTTP server, PTY-WebSocket bridge, static assets
+    frontend/        Screen-buffer terminal (TypeScript, ANSI parser)
 deploy/              Systemd service unit
 scripts/             Infrastructure provisioning helpers
 ```
@@ -183,7 +184,7 @@ scripts/             Infrastructure provisioning helpers
 To use this as a template for your own terminal portfolio:
 
 1. **Edit content** -- Modify [internal/content/content.go](internal/content/content.go) with your own about, skills, projects, and contact info
-2. **Update branding** -- Change the hostname and prompt in [internal/tui/views.go](internal/tui/views.go) and [internal/web/bridge.go](internal/web/bridge.go)
+2. **Update branding** -- Change the hostname and prompt in [internal/tui/views.go](internal/tui/views.go)
 3. **Configure email** -- Set `RESEND_API_KEY` and `CONTACT_EMAIL` environment variables, or remove the email feature
 4. **Deploy** -- Update the Makefile `SERVER` variable and systemd service paths for your infrastructure
 
