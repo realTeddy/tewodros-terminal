@@ -1,6 +1,8 @@
 export class WS {
   private ws: WebSocket | null = null;
   private url: string;
+  private encoder = new TextEncoder();
+  private decoder = new TextDecoder();
 
   onMessage: ((data: string) => void) | null = null;
   onDisconnect: ((msg: string) => void) | null = null;
@@ -12,13 +14,18 @@ export class WS {
 
   connect(): void {
     this.ws = new WebSocket(this.url);
+    this.ws.binaryType = "arraybuffer";
 
-    this.ws.onopen = () => {
-      this.send({ type: "resize", cols: 80, rows: 24 });
-    };
+    this.ws.onopen = () => {};
 
     this.ws.onmessage = (e: MessageEvent) => {
-      if (this.onMessage) this.onMessage(e.data);
+      if (this.onMessage) {
+        if (e.data instanceof ArrayBuffer) {
+          this.onMessage(this.decoder.decode(e.data));
+        } else {
+          this.onMessage(e.data);
+        }
+      }
     };
 
     this.ws.onclose = () => {
@@ -34,12 +41,14 @@ export class WS {
   }
 
   sendInput(data: string): void {
-    this.send({ type: "input", data });
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(this.encoder.encode(data));
+    }
   }
 
-  private send(msg: Record<string, unknown>): void {
+  sendResize(cols: number, rows: number): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(msg));
+      this.ws.send(JSON.stringify({ type: "resize", cols, rows }));
     }
   }
 }
