@@ -70,13 +70,16 @@ export class ScreenBuffer {
       this._cursorRow++;
       if (this._cursorRow >= this.rows) this.scrollUp();
     }
-    this.cells[this._cursorRow][this._cursorCol] = {
-      char: ch,
-      fg: style.fg,
-      bg: style.bg,
-      bold: style.bold,
-    };
-    this.dirty.add(this._cursorRow);
+    const existing = this.cells[this._cursorRow][this._cursorCol];
+    if (existing.char !== ch || existing.fg !== style.fg || existing.bg !== style.bg || existing.bold !== style.bold) {
+      this.cells[this._cursorRow][this._cursorCol] = {
+        char: ch,
+        fg: style.fg,
+        bg: style.bg,
+        bold: style.bold,
+      };
+      this.dirty.add(this._cursorRow);
+    }
     this._cursorCol++;
     // Eagerly advance to next row when end of line reached.
     // If _cursorRow goes out of bounds, the scroll is deferred until cursorRow is read.
@@ -120,26 +123,33 @@ export class ScreenBuffer {
     if (mode === 0) { start = this._cursorCol; end = this.cols; }
     else if (mode === 1) { start = 0; end = this._cursorCol + 1; }
     else { start = 0; end = this.cols; }
-    for (let c = start; c < end; c++) row[c] = emptyCell();
-    this.dirty.add(this._cursorRow);
+    let changed = false;
+    for (let c = start; c < end; c++) {
+      if (row[c].char !== " " || row[c].fg !== "" || row[c].bg !== "" || row[c].bold !== false) {
+        row[c] = emptyCell();
+        changed = true;
+      }
+    }
+    if (changed) this.dirty.add(this._cursorRow);
   }
 
   eraseInDisplay(mode: number): void {
     if (mode === 0) {
       this.eraseInLine(0);
-      for (let r = this._cursorRow + 1; r < this.rows; r++) {
-        this.cells[r] = this.newRow();
-        this.dirty.add(r);
-      }
+      for (let r = this._cursorRow + 1; r < this.rows; r++) this.eraseRow(r);
     } else if (mode === 1) {
-      for (let r = 0; r < this._cursorRow; r++) {
-        this.cells[r] = this.newRow();
-        this.dirty.add(r);
-      }
+      for (let r = 0; r < this._cursorRow; r++) this.eraseRow(r);
       this.eraseInLine(1);
     } else {
-      for (let r = 0; r < this.rows; r++) {
-        this.cells[r] = this.newRow();
+      for (let r = 0; r < this.rows; r++) this.eraseRow(r);
+    }
+  }
+
+  private eraseRow(r: number): void {
+    const row = this.cells[r];
+    for (let c = 0; c < this.cols; c++) {
+      if (row[c].char !== " " || row[c].fg !== "" || row[c].bg !== "" || row[c].bold !== false) {
+        row[c] = emptyCell();
         this.dirty.add(r);
       }
     }

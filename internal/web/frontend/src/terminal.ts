@@ -10,6 +10,10 @@ export class Terminal {
   private rowEls: HTMLDivElement[] = [];
   private cursorEl: HTMLSpanElement;
   private inputHandler: ((data: string) => void) | null = null;
+  private renderPending = false;
+  private rowCache: string[] = [];
+  private charW = 0;
+  private charH = 0;
 
   constructor(element: HTMLDivElement, cols: number, rows: number) {
     this.container = element;
@@ -50,10 +54,11 @@ export class Terminal {
 
   write(data: string): void {
     this.parser.feed(data);
-    this.render();
+    this.scheduleRender();
   }
 
   resize(cols: number, rows: number): void {
+    this.charW = 0; // invalidate measurement cache
     this.sb.resize(cols, rows);
     while (this.rowEls.length < rows) {
       const row = document.createElement("div");
@@ -68,6 +73,15 @@ export class Terminal {
     this.render();
   }
 
+  private scheduleRender(): void {
+    if (this.renderPending) return;
+    this.renderPending = true;
+    requestAnimationFrame(() => {
+      this.renderPending = false;
+      this.render();
+    });
+  }
+
   private render(): void {
     for (let r = 0; r < this.sb.rows; r++) {
       if (!this.sb.isDirty(r)) continue;
@@ -77,7 +91,21 @@ export class Terminal {
     this.updateCursor();
   }
 
+  private serializeRow(r: number): string {
+    const cells = this.sb.getRow(r);
+    let result = "";
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      result += c.char + "\x00" + c.fg + "\x00" + c.bg + "\x00" + (c.bold ? "1" : "0") + "\x01";
+    }
+    return result;
+  }
+
   private renderRow(r: number): void {
+    const key = this.serializeRow(r);
+    if (this.rowCache[r] === key) return;
+    this.rowCache[r] = key;
+
     const rowEl = this.rowEls[r];
     if (!rowEl) return;
     rowEl.innerHTML = "";
@@ -165,6 +193,24 @@ export class Terminal {
     const rowEl = this.rowEls[this.sb.cursorRow];
     if (!rowEl) return;
 
+    if (!this.charW) this.measureChar();
+
+    const outputRect = this.output.getBoundingClientRect();
+    const x = this.sb.cursorCol * this.charW;
+    const y = this.sb.cursorRow * this.charH;
+
+    this.cursorEl.style.position = "absolute";
+    this.cursorEl.style.left = (outputRect.left - this.container.getBoundingClientRect().left + x) + "px";
+    this.cursorEl.style.top = (outputRect.top - this.container.getBoundingClientRect().top + y) + "px";
+    this.cursorEl.style.width = this.charW + "px";
+    this.cursorEl.style.height = this.charH + "px";
+  }
+
+  private emit(data: string): void {
+    if (this.inputHandler) this.inputHandler(data);
+  }
+
+  private measureChar(): void {
     const style = getComputedStyle(this.output);
     const probe = document.createElement("span");
     probe.style.font = style.font;
@@ -172,23 +218,9 @@ export class Terminal {
     probe.style.position = "absolute";
     probe.textContent = "X";
     this.output.appendChild(probe);
-    const charW = probe.getBoundingClientRect().width;
-    const charH = parseFloat(style.lineHeight) || probe.getBoundingClientRect().height;
+    this.charW = probe.getBoundingClientRect().width;
+    this.charH = parseFloat(style.lineHeight) || probe.getBoundingClientRect().height;
     this.output.removeChild(probe);
-
-    const outputRect = this.output.getBoundingClientRect();
-    const x = this.sb.cursorCol * charW;
-    const y = this.sb.cursorRow * charH;
-
-    this.cursorEl.style.position = "absolute";
-    this.cursorEl.style.left = (outputRect.left - this.container.getBoundingClientRect().left + x) + "px";
-    this.cursorEl.style.top = (outputRect.top - this.container.getBoundingClientRect().top + y) + "px";
-    this.cursorEl.style.width = charW + "px";
-    this.cursorEl.style.height = charH + "px";
-  }
-
-  private emit(data: string): void {
-    if (this.inputHandler) this.inputHandler(data);
   }
 
   private setupInput(): void {
