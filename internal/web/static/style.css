@@ -86,6 +86,8 @@ html, body {
     color: #8be9fd;
     text-decoration: underline;
     cursor: pointer;
+    position: relative;
+    z-index: 1;
 }
 
 .term-output a:hover {

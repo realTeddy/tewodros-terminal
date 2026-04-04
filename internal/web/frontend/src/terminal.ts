@@ -192,8 +192,9 @@ export class Terminal {
   }
 
   private setupInput(): void {
-    this.container.addEventListener("click", (e) => {
-      if ((e.target as HTMLElement).tagName === "A") return;
+    this.container.addEventListener("mousedown", (e) => {
+      if ((e.target as HTMLElement).closest("a")) return;
+      e.preventDefault();
       this.hiddenInput.focus();
     });
 
