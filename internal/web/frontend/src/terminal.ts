@@ -1,24 +1,36 @@
-import { parse } from "./ansi";
+import { ScreenBuffer } from "./screenbuffer";
+import { AnsiParser } from "./ansi";
 
 export class Terminal {
-  private output: HTMLPreElement;
-  private cursor: HTMLSpanElement;
   private container: HTMLDivElement;
+  private output: HTMLPreElement;
   private hiddenInput: HTMLTextAreaElement;
+  private sb: ScreenBuffer;
+  private parser: AnsiParser;
+  private rowEls: HTMLDivElement[] = [];
+  private cursorEl: HTMLSpanElement;
   private inputHandler: ((data: string) => void) | null = null;
 
-  constructor(element: HTMLDivElement) {
+  constructor(element: HTMLDivElement, cols: number, rows: number) {
     this.container = element;
+    this.sb = new ScreenBuffer(cols, rows);
+    this.parser = new AnsiParser(this.sb);
 
     this.output = document.createElement("pre");
     this.output.className = "term-output";
     this.container.appendChild(this.output);
 
-    this.cursor = document.createElement("span");
-    this.cursor.className = "term-cursor";
-    this.output.appendChild(this.cursor);
+    for (let r = 0; r < rows; r++) {
+      const row = document.createElement("div");
+      row.className = "term-row";
+      this.output.appendChild(row);
+      this.rowEls.push(row);
+    }
 
-    // Hidden textarea captures keyboard on both desktop and mobile
+    this.cursorEl = document.createElement("span");
+    this.cursorEl.className = "term-cursor";
+    this.container.appendChild(this.cursorEl);
+
     this.hiddenInput = document.createElement("textarea");
     this.hiddenInput.className = "term-hidden-input";
     this.hiddenInput.autocapitalize = "off";
@@ -29,6 +41,7 @@ export class Terminal {
 
     this.setupInput();
     this.hiddenInput.focus();
+    this.render();
   }
 
   onInput(handler: (data: string) => void): void {
@@ -36,55 +49,142 @@ export class Terminal {
   }
 
   write(data: string): void {
-    const actions = parse(data);
-    for (const action of actions) {
-      switch (action.type) {
-        case "text":
-          this.appendText(action.text, action.classes);
-          break;
-        case "newline":
-          this.output.insertBefore(document.createElement("br"), this.cursor);
-          break;
-        case "backspace":
-          this.removeLastChar();
-          break;
-        case "clear":
-          this.output.innerHTML = "";
-          this.output.appendChild(this.cursor);
-          break;
-      }
-    }
-    this.container.scrollTop = this.container.scrollHeight;
+    this.parser.feed(data);
+    this.render();
   }
 
-  private static URL_RE = /(https?:\/\/[^\s)]+)/g;
+  resize(cols: number, rows: number): void {
+    this.sb.resize(cols, rows);
+    while (this.rowEls.length < rows) {
+      const row = document.createElement("div");
+      row.className = "term-row";
+      this.output.appendChild(row);
+      this.rowEls.push(row);
+    }
+    while (this.rowEls.length > rows) {
+      const row = this.rowEls.pop()!;
+      this.output.removeChild(row);
+    }
+    this.render();
+  }
 
-  private appendText(text: string, classes: string): void {
-    const parts = text.split(Terminal.URL_RE);
-    for (const part of parts) {
-      if (Terminal.URL_RE.test(part)) {
+  private render(): void {
+    for (let r = 0; r < this.sb.rows; r++) {
+      if (!this.sb.isDirty(r)) continue;
+      this.renderRow(r);
+    }
+    this.sb.clearDirty();
+    this.updateCursor();
+  }
+
+  private renderRow(r: number): void {
+    const rowEl = this.rowEls[r];
+    if (!rowEl) return;
+    rowEl.innerHTML = "";
+
+    const cells = this.sb.getRow(r);
+    let i = 0;
+    while (i < cells.length) {
+      const cell = cells[i];
+      const cls = this.cellClasses(cell);
+
+      let text = cell.char;
+      let j = i + 1;
+      while (j < cells.length && this.cellClasses(cells[j]) === cls) {
+        text += cells[j].char;
+        j++;
+      }
+
+      if (j === cells.length) text = text.replace(/ +$/, "");
+
+      if (text) {
+        if (cls) {
+          const span = document.createElement("span");
+          span.className = cls;
+          span.textContent = text;
+          rowEl.appendChild(span);
+        } else {
+          rowEl.appendChild(document.createTextNode(text));
+        }
+      }
+
+      i = j;
+    }
+
+    this.linkifyRow(rowEl);
+  }
+
+  private linkifyRow(rowEl: HTMLDivElement): void {
+    const walker = document.createTreeWalker(rowEl, NodeFilter.SHOW_TEXT);
+    const urlRe = /(https?:\/\/[^\s)]+)/g;
+    const textNodes: Text[] = [];
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) textNodes.push(node);
+
+    for (const textNode of textNodes) {
+      const text = textNode.textContent || "";
+      if (!urlRe.test(text)) continue;
+      urlRe.lastIndex = 0;
+
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      let match: RegExpExecArray | null;
+      while ((match = urlRe.exec(text)) !== null) {
+        if (match.index > last) {
+          frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+        }
         const a = document.createElement("a");
-        a.href = part;
+        a.href = match[0];
         a.target = "_blank";
         a.rel = "noopener noreferrer";
-        if (classes) a.className = classes;
-        a.textContent = part;
-        this.output.insertBefore(a, this.cursor);
-      } else if (part) {
-        const span = document.createElement("span");
-        if (classes) span.className = classes;
-        span.textContent = part;
-        this.output.insertBefore(span, this.cursor);
+        a.textContent = match[0];
+        frag.appendChild(a);
+        last = match.index + match[0].length;
       }
+      if (last < text.length) {
+        frag.appendChild(document.createTextNode(text.slice(last)));
+      }
+      textNode.parentNode!.replaceChild(frag, textNode);
     }
   }
 
-  private removeLastChar(): void {
-    const last = this.cursor.previousSibling;
-    if (last && last instanceof HTMLElement && last.textContent) {
-      last.textContent = last.textContent.slice(0, -1);
-      if (!last.textContent) this.output.removeChild(last);
+  private cellClasses(cell: { fg: string; bg: string; bold: boolean }): string {
+    const parts: string[] = [];
+    if (cell.fg) parts.push("fg-" + cell.fg);
+    if (cell.bg) parts.push("bg-" + cell.bg);
+    if (cell.bold) parts.push("bold");
+    return parts.join(" ");
+  }
+
+  private updateCursor(): void {
+    if (!this.sb.cursorVisible) {
+      this.cursorEl.style.display = "none";
+      return;
     }
+    this.cursorEl.style.display = "";
+    const rowEl = this.rowEls[this.sb.cursorRow];
+    if (!rowEl) return;
+
+    const style = getComputedStyle(this.output);
+    const probe = document.createElement("span");
+    probe.style.font = style.font;
+    probe.style.visibility = "hidden";
+    probe.style.position = "absolute";
+    probe.textContent = "X";
+    this.output.appendChild(probe);
+    const charW = probe.getBoundingClientRect().width;
+    const charH = parseFloat(style.lineHeight) || probe.getBoundingClientRect().height;
+    this.output.removeChild(probe);
+
+    const outputRect = this.output.getBoundingClientRect();
+    const x = this.sb.cursorCol * charW;
+    const y = this.sb.cursorRow * charH;
+
+    this.cursorEl.style.position = "absolute";
+    this.cursorEl.style.left = (outputRect.left - this.container.getBoundingClientRect().left + x) + "px";
+    this.cursorEl.style.top = (outputRect.top - this.container.getBoundingClientRect().top + y) + "px";
+    this.cursorEl.style.width = charW + "px";
+    this.cursorEl.style.height = charH + "px";
   }
 
   private emit(data: string): void {
@@ -110,8 +210,22 @@ export class Terminal {
       } else if (e.ctrlKey && e.key === "d") {
         e.preventDefault();
         this.emit("\x04");
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        this.emit("\x1b");
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        this.emit("\x1b[A");
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        this.emit("\x1b[B");
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        this.emit("\x1b[C");
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        this.emit("\x1b[D");
       }
-      // Printable chars are handled by the 'input' event below
     });
 
     this.hiddenInput.addEventListener("input", () => {
@@ -122,4 +236,22 @@ export class Terminal {
       }
     });
   }
+}
+
+export function measureTermSize(container: HTMLElement): { cols: number; rows: number } {
+  const style = getComputedStyle(container);
+  const probe = document.createElement("span");
+  probe.style.font = style.font || "15px 'Fira Code', 'Cascadia Code', 'Consolas', monospace";
+  probe.style.visibility = "hidden";
+  probe.style.position = "absolute";
+  probe.textContent = "X";
+  container.appendChild(probe);
+  const charW = probe.getBoundingClientRect().width;
+  const charH = probe.getBoundingClientRect().height;
+  container.removeChild(probe);
+  const padding = parseFloat(style.paddingLeft || "0") + parseFloat(style.paddingRight || "0");
+  const vPadding = parseFloat(style.paddingTop || "0") + parseFloat(style.paddingBottom || "0");
+  const cols = Math.floor((container.clientWidth - padding) / charW);
+  const rows = Math.floor((container.clientHeight - vPadding) / charH);
+  return { cols: Math.max(cols, 1), rows: Math.max(rows, 1) };
 }
